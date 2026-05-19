@@ -120,6 +120,18 @@ class CreatePurchaseOrderRequest(BaseModel):
     expected_delivery_date: str
     notes: Optional[str] = None
 
+class OrderItem(BaseModel):
+    sku: str
+    name: str
+    quantity: int
+    unit_price: float
+
+class CreateOrderRequest(BaseModel):
+    customer: str
+    items: List[OrderItem]
+    warehouse: Optional[str] = None
+    category: Optional[str] = None
+
 # API endpoints
 @app.get("/")
 def root():
@@ -152,6 +164,27 @@ def get_orders(
     filtered_orders = apply_filters(orders, warehouse, category, status)
     filtered_orders = filter_by_month(filtered_orders, month)
     return filtered_orders
+
+@app.post("/api/orders", response_model=Order)
+def create_order(request: CreateOrderRequest):
+    """Create a new restocking order"""
+    from datetime import datetime, timedelta
+    now = datetime.utcnow()
+    new_order = {
+        "id": str(len(orders) + 1),
+        "order_number": f"RST-{now.year}-{str(len(orders) + 1).zfill(4)}",
+        "customer": request.customer,
+        "items": [item.dict() for item in request.items],
+        "status": "Submitted",
+        "warehouse": request.warehouse,
+        "category": request.category,
+        "order_date": now.isoformat(),
+        "expected_delivery": (now + timedelta(days=14)).isoformat(),
+        "total_value": round(sum(i.quantity * i.unit_price for i in request.items), 2),
+        "actual_delivery": None,
+    }
+    orders.append(new_order)
+    return new_order
 
 @app.get("/api/orders/{order_id}", response_model=Order)
 def get_order(order_id: str):
@@ -303,6 +336,55 @@ def get_monthly_trends():
     result = list(months.values())
     result.sort(key=lambda x: x['month'])
     return result
+
+class Task(BaseModel):
+    id: str
+    title: str
+    priority: str
+    dueDate: str
+    status: str
+
+class CreateTaskRequest(BaseModel):
+    title: str
+    priority: str
+    dueDate: str
+
+# In-memory task store
+api_tasks: List[dict] = []
+_task_id_counter = 1000
+
+@app.get("/api/tasks", response_model=List[Task])
+def get_tasks():
+    return api_tasks
+
+@app.post("/api/tasks", response_model=Task, status_code=201)
+def create_task(task_data: CreateTaskRequest):
+    global _task_id_counter
+    _task_id_counter += 1
+    new_task = {
+        "id": str(_task_id_counter),
+        "title": task_data.title,
+        "priority": task_data.priority,
+        "dueDate": task_data.dueDate,
+        "status": "pending"
+    }
+    api_tasks.append(new_task)
+    return new_task
+
+@app.delete("/api/tasks/{task_id}", status_code=204)
+def delete_task(task_id: str):
+    task = next((t for t in api_tasks if t["id"] == task_id), None)
+    if not task:
+        raise HTTPException(status_code=404, detail=f"Task {task_id} not found")
+    api_tasks.remove(task)
+
+@app.patch("/api/tasks/{task_id}", response_model=Task)
+def toggle_task(task_id: str):
+    task = next((t for t in api_tasks if t["id"] == task_id), None)
+    if not task:
+        raise HTTPException(status_code=404, detail=f"Task {task_id} not found")
+    task["status"] = "completed" if task["status"] == "pending" else "pending"
+    return task
 
 if __name__ == "__main__":
     import uvicorn
