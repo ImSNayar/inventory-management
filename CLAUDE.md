@@ -1,5 +1,7 @@
 # CLAUDE.md
 
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
 Factory Inventory Management System Demo with GitHub integration - Full-stack application with Vue 3 frontend, Python FastAPI backend, and in-memory mock data (no database).
 
 ## Critical Tool Usage Rules
@@ -31,14 +33,31 @@ Use the Task tool with these specialized subagents for appropriate tasks:
 ## Quick Start
 
 ```bash
-# Backend
-cd server
-uv run python main.py
+# One-command (macOS/Linux)
+./scripts/start.sh   # starts both; ./scripts/stop.sh to stop
 
-# Frontend
-cd client
-npm install && npm run dev
+# Manual
+cd server && uv run python main.py       # backend — http://localhost:8001
+cd client && npm install && npm run dev  # frontend — http://localhost:3000
 ```
+
+> **Note:** `uv` installs to `~/.local/bin`. If `uv` is not on PATH, run:
+> `export PATH="$HOME/.local/bin:$PATH"` or install via `curl -LsSf https://astral.sh/uv/install.sh | sh`
+
+## Testing
+
+```bash
+# All backend tests
+cd tests && uv run pytest backend/ -v
+
+# Single test file
+cd tests && uv run pytest backend/test_inventory.py -v
+
+# Single test
+cd tests && uv run pytest backend/test_inventory.py::test_name -v
+```
+
+Tests use FastAPI `TestClient` (no live server needed). Config in `tests/pytest.ini`; fixtures in `tests/backend/conftest.py`.
 
 ## Key Patterns
 
@@ -61,11 +80,18 @@ npm install && npm run dev
 5. Revenue goals: $800K/month single, $9.6M YTD all months
 
 ## File Locations
-- Views: `client/src/views/*.vue`
-- API Client: `client/src/api.js`
-- Backend: `server/main.py`, `server/mock_data.py`
-- Data: `server/data/*.json`
-- Styles: `client/src/App.vue`
+
+**Frontend views** (`client/src/views/`): `Dashboard.vue`, `Inventory.vue`, `Orders.vue`, `Demand.vue`, `Backlog.vue`, `Spending.vue`, `Reports.vue`
+
+**Shared components** (`client/src/`): `FilterBar.vue` (global filter UI), modal components (`*Modal.vue`), `ProfileMenu.vue`, `LanguageSwitcher.vue`
+
+**Backend**: `server/main.py` (all endpoints + Pydantic models), `server/mock_data.py` (loads JSON → in-memory lists)
+
+**API client**: `client/src/api.js` — all axios calls go here, filters passed as query params
+
+**Data files**: `server/data/*.json` — inventory, orders, demand\_forecasts, backlog\_items, spending, transactions, purchase\_orders
+
+**Global styles**: `client/src/App.vue`
 
 ## Design System
 - Colors: Slate/gray (#0f172a, #64748b, #e2e8f0)

@@ -8,6 +8,39 @@
     <div v-if="loading" class="loading">{{ t('common.loading') }}</div>
     <div v-else-if="error" class="error">{{ error }}</div>
     <div v-else>
+      <div v-if="submittedOrders.length > 0" class="card submitted-orders-card">
+        <div class="card-header">
+          <h3 class="card-title">Submitted Orders</h3>
+          <span class="order-count">{{ submittedOrders.length }} order{{ submittedOrders.length !== 1 ? 's' : '' }}</span>
+        </div>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Order Number</th>
+                <th>Items</th>
+                <th>Status</th>
+                <th>Order Date</th>
+                <th>Est. Delivery</th>
+                <th>Lead Time</th>
+                <th>Total Value</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="order in submittedOrders" :key="order.id">
+                <td><strong>{{ order.order_number }}</strong></td>
+                <td>{{ order.items.length }} item{{ order.items.length !== 1 ? 's' : '' }}</td>
+                <td><span class="badge badge-submitted">Submitted</span></td>
+                <td>{{ formatDate(order.order_date) }}</td>
+                <td>{{ formatDate(order.expected_delivery) }}</td>
+                <td>{{ leadTimeDays(order) }} days</td>
+                <td><strong>{{ currencySymbol }}{{ order.total_value.toLocaleString() }}</strong></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       <div class="stats-grid">
         <div class="stat-card success">
           <div class="stat-label">{{ t('status.delivered') }}</div>
@@ -129,6 +162,12 @@ export default {
       loadOrders()
     })
 
+    const submittedOrders = computed(() => orders.value.filter(o => o.status === 'Submitted'))
+
+    const leadTimeDays = (order) => {
+      return Math.round((new Date(order.expected_delivery) - new Date(order.order_date)) / 86400000)
+    }
+
     const getOrdersByStatus = (status) => {
       return orders.value.filter(order => order.status === status)
     }
@@ -160,6 +199,8 @@ export default {
       loading,
       error,
       orders,
+      submittedOrders,
+      leadTimeDays,
       getOrdersByStatus,
       getOrderStatusClass,
       formatDate,
@@ -275,5 +316,28 @@ export default {
 .item-meta {
   font-size: 0.813rem;
   color: #64748b;
+}
+
+.badge-submitted {
+  background: #ede9fe;
+  color: #7c3aed;
+  display: inline-block;
+  padding: 0.313rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+}
+
+.submitted-orders-card {
+  border-color: #c4b5fd;
+  background: #faf5ff;
+}
+
+.order-count {
+  font-size: 0.875rem;
+  color: #64748b;
+  font-weight: 500;
 }
 </style>
